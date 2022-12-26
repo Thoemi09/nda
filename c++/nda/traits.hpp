@@ -19,6 +19,7 @@
 #include <complex>
 #include <type_traits>
 #include <utility>
+#include <tuple>
 
 // A few addons to the std::...
 #include "stdutil/complex.hpp"
