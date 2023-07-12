@@ -40,7 +40,7 @@ namespace nda::mem {
    * Device  -> Address on GPU memory
    * Unified -> CUDA Unified memory address
    */
-  enum class AddressSpace { None, Host, Device, Unified };
+  enum class AddressSpace { None, Host, Device, Unified }; // Do not change order, used in max in combine below.
   using AddressSpace::Device;
   using AddressSpace::Host;
   using AddressSpace::None;
@@ -52,6 +52,10 @@ namespace nda::mem {
   static constexpr AddressSpace get_addr_space = mem::None;
   template <typename T>
   static constexpr AddressSpace get_addr_space<T &> = get_addr_space<T>;
+  // FIXMEOP : what about T const ??
+
+  // FIXMEOP combine : too simple name ?? 
+  // put in detail namespace ? 
 
   // Promotion rules for the AddressSpace in unnary and binary operations (e.g. +)
   template <AddressSpace A1, AddressSpace A2 = None, AddressSpace... AN>

@@ -90,11 +90,15 @@ namespace nda {
     /// Makes a deep copy, since array is a regular type
     explicit basic_array(basic_array const &x) noexcept : lay(x.indexmap()), sto(x.sto) {}
 
+    //FIXMEOP why make a copy and move ? 
+    // FIXMEOP Naming : why _other while the rest is in CamelCase ? 
+
     /// Makes a deep copy, given a basic_array with a different container policy
     template <char Algebra_other, typename ContainerPolicy_other>
     explicit basic_array(basic_array<ValueType, Rank, LayoutPolicy, Algebra_other, ContainerPolicy_other> x) noexcept
        : lay(x.indexmap()), sto(std::move(x.storage())) {}
 
+    // FIXMEOP Why requires ? is error message better with this or with the static_assert ?
     /** 
      * Construct with a shape [i0, is ...]. 
      * Int are integers (convertible to long), and there must be exactly R arguments.
@@ -393,6 +397,8 @@ namespace nda {
 
   // --- Class Template Argument Deduction Guides ---
 
+  // FIXMOP : Meaning that a non Memory array will always be Host by default ?
+
   template <MemoryArray A>
   basic_array(A &&a)
      -> basic_array<get_value_t<A>, get_rank<A>, get_contiguous_layout_policy<get_rank<A>, get_layout_info<A>.stride_order>, get_algebra<A>, heap<mem::get_addr_space<A>>>;
@@ -406,6 +412,9 @@ namespace nda {
   using get_regular_t = decltype(basic_array{std::declval<T>()});
 
   // --- Get the associated regular type with host/device/unified memory ---
+ 
+  // FIXMEOP Can be removed by putting basic_aarray ....-> into the implementation of to_device() function ?
+  // one less thing at top level, just decltype(to_device(A))
 
   template <typename T, typename RT = get_regular_t<T>>
   using get_regular_host_t = std::conditional_t<mem::on_host<RT>, RT, basic_array<get_value_t<RT>, get_rank<RT>, get_contiguous_layout_policy<get_rank<RT>, get_layout_info<RT>.stride_order>, get_algebra<RT>, heap<mem::Host>>>;

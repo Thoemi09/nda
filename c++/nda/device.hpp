@@ -28,10 +28,14 @@ namespace nda {
   // Use within constexpr branch to trigger compiler error
   template<bool flag = false> void compile_error_no_gpu() { static_assert(flag, "Using device functionality without gpu support! Configure project with -DSupportGPU=ON."); }
 
+  // FIXMEOP Difference between have_device and have_cuda ?
+  // FIXMEOP : why is this file not in mem/ ??
+
 #if defined(NDA_HAVE_CUDA)
   static constexpr bool have_device = true;
   static constexpr bool have_cuda   = true;
 
+  // FIXMEOP : typo in sucess. NAme of the function : device_error_check ?? we check an error
   inline void device_check(cudaError_t sucess, std::string message = "") {
     if (sucess != cudaSuccess) {
       NDA_RUNTIME_ERROR << "Cuda runtime error: " << std::to_string(sucess) << "\n"
