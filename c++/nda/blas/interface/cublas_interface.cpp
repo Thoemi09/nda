@@ -33,6 +33,9 @@ using namespace std::string_literals;
 
 namespace nda::blas::device {
 
+  // OPFIXME : why a break after a return ?
+  // std::terminate at compile time ?
+  //
   constexpr cublasOperation_t get_cublas_op(char op) {
     switch (op) {
       case 'N': return CUBLAS_OP_N; break;
@@ -43,7 +46,8 @@ namespace nda::blas::device {
   }
 
   // Get CuBlas Handle, Used by all routines
-  auto &get_handle() {
+  // One unique handle for all.
+  cublasHandle_t &get_handle() {
     struct handle_t {
       handle_t() { cublasCreate(&h); }
       ~handle_t() { cublasDestroy(h); }
@@ -67,7 +71,7 @@ namespace nda::blas::device {
   }
 
   // Get Magma queue, Used by all magma routines
-  auto &get_magma_queue() {
+  magma_queue_t &get_magma_queue() {
     struct queue_t {
       queue_t() {
         int device{};
@@ -101,6 +105,9 @@ namespace nda::blas::device {
             int LDC) {
     CUBLAS_CHECK(cublasDgemm, get_cublas_op(op_a), get_cublas_op(op_b), M, N, K, &alpha, A, LDA, B, LDB, &beta, C, LDC);
   }
+
+  // OPFIXME introduce a function make_cuDoubleComplex that make the cuDoubleComplex from a std::complex ??
+ // cf lapack : there is a reinterpret_cast.
   void gemm(char op_a, char op_b, int M, int N, int K, std::complex<double> alpha, const std::complex<double> *A, int LDA,
             const std::complex<double> *B, int LDB, std::complex<double> beta, std::complex<double> *C, int LDC) {
     auto alpha_cu = cuDoubleComplex{alpha.real(), alpha.imag()};

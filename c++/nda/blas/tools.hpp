@@ -22,6 +22,7 @@
 #include "../concepts.hpp"
 #include "../mapped_functions.hpp"
 
+//OPFIXME : should this be here ?? 
 namespace nda {
   using dcomplex = std::complex<double>;
 }

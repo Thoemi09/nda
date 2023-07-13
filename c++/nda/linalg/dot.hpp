@@ -21,6 +21,10 @@
 
 namespace nda {
 
+  //OPFIXME : better doc ? What can X, Y be ??
+  // a lot, e.g. expr (but then we make a copy ???).
+  // is it really a good idea to make a copy ??
+
   /**
    * @tparam X
    * @tparam Y
@@ -31,6 +35,7 @@ namespace nda {
    */
   template <typename X, typename Y>
   auto dot(X &&l, Y &&r) {
+    //OPFIXME : why && and not const & ?? No change to l, r
     static constexpr auto L_adr_spc = mem::get_addr_space<X>;
     static constexpr auto R_adr_spc = mem::get_addr_space<Y>;
     static_assert(L_adr_spc != mem::None);
@@ -54,6 +59,7 @@ namespace nda {
     }
   }
 
+  // OPFIXME Same remarks
   /**
    * @tparam X
    * @tparam Y

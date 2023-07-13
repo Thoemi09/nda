@@ -29,6 +29,7 @@ using namespace std::string_literals;
 
 namespace nda::lapack::device {
 
+  // OPFIXME : DUPLICATE ! 
   constexpr cublasOperation_t get_cublas_op(char op) {
     switch (op) {
       case 'N': return CUBLAS_OP_N; break;
@@ -38,8 +39,10 @@ namespace nda::lapack::device {
     }
   }
 
+  // OPFIXME : SAME name as in blas, with different return type !! Confusing  ?...
+  // get_cusolver_handle ?
   // Get CuSolver Handle, Used by all routines
-  auto &get_handle() {
+  cusolverDnHandle_t &get_handle() {
     struct handle_t {
       handle_t() { cusolverDnCreate(&h); }
       ~handle_t() { cusolverDnDestroy(h); }
@@ -52,6 +55,7 @@ namespace nda::lapack::device {
     return h;
   }
 
+  // OPFIXME What is this ???
   // Get Integer Pointer in unified memory, Used to return info from lapack routines
   int *get_info_ptr() {
     static auto info_u_handle = mem::handle_heap<int, mem::mallocator<mem::Unified>>(1);
@@ -66,8 +70,13 @@ namespace nda::lapack::device {
   if (synchronize) cudaDeviceSynchronize();                                                                                                          \
   if (err != CUSOLVER_STATUS_SUCCESS) NDA_RUNTIME_ERROR << AS_STRING(X) + " failed with error code "s + std::to_string(err);
 
+  // OPFIXME : use it in blas too !
+  // factorize
   inline auto *cucplx(std::complex<double> *c) { return reinterpret_cast<cuDoubleComplex *>(c); }             // NOLINT
   inline auto *cucplx(std::complex<double> const *c) { return reinterpret_cast<const cuDoubleComplex *>(c); } // NOLINT
+
+  // OPFIXME : use dcomplex alias to make code clearer.
+  // include blas/tools.hpp
 
   void gesvd(char JOBU, char JOBVT, int M, int N, double *A, int LDA, double *S, double *U, int LDU, double *VT, int LDVT, double *WORK, int LWORK,
              double *RWORK, int &INFO) {

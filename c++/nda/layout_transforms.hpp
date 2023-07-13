@@ -76,6 +76,9 @@ namespace nda {
 
   // ---------------  transpose ------------------------
 
+  // OPFIXME : doc is MISSING. 
+  // In particular the fact that it is a transposed VIEW ...
+  // 
   template <typename A>
   auto transpose(A &&a) requires(MemoryMatrix<A> or is_instantiation_of_v<expr_call, A>) {
     if constexpr (MemoryMatrix<A>) {

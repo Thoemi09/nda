@@ -24,6 +24,7 @@
 
 namespace nda::blas {
 
+  // OPFIXME : documentation MISSING 
   /**
    * Batched version of GEMM taking vectors of matrices as arguments
    */
@@ -37,6 +38,7 @@ namespace nda::blas {
     if (vx.empty()) return;
     int batch_count = vx.size();
 
+    // OPFIXME : move in tools : reepeat in every function 
     auto to_mat = []<typename Z>(Z & z) -> auto & {
       if constexpr (is_conj_array_expr<Z>)
         return std::get<0>(z.a);
@@ -57,6 +59,9 @@ namespace nda::blas {
     // c is in C order: compute the transpose of the product in Fortran order
     if constexpr (has_C_layout<C>) {
 
+      // OPFIXME : does it copy data  ? or we have a vector of view... ? not very clear....
+      // why is the transpose treated differently than the conj ?? which is an expression ...
+      // see below ... 
       auto map_transpose = [](auto &v) {
         auto vT = std::vector<std::decay_t<decltype(transpose(v[0]))>>{};
         vT.reserve(v.size());
@@ -85,10 +90,18 @@ namespace nda::blas {
       auto b_ptrs = get_ptrs(vy);
       auto c_ptrs = get_ptrs(vc);
 
+      // OPFIXME : can I remove the first  if constexpr (has_C_layout<C>) ?
+      // and spare the all vector of view stuff  by simply adding another term to the transpose here ??
+      // data is the same, it is just a transposition ... 
+      //char op_a = get_op<conj_A, /*transpose =*/ (has_C_layout<C> ? has_F_layout<A> : has_C_layout<A>)>;
+
       char op_a = get_op<conj_A, /*transpose =*/has_C_layout<A>>;
       char op_b = get_op<conj_B, /*transpose =*/has_C_layout<B>>;
 
       if constexpr (VBATCH) {
+
+	// OPFIXME : which vector is this ? nda::vector ? std:vector
+	// unclear. QUALIFY.
 
         // Create vectors of size 'batch_count + 1' as required by Magma
         vector<int, heap<vec_adr_spc>> vm(batch_count + 1), vk(batch_count + 1), vn(batch_count + 1), vlda(batch_count + 1), vldb(batch_count + 1),
@@ -125,6 +138,7 @@ namespace nda::blas {
         }
       } else {
 
+	// OPFIXME : shouldnt' we check that the size are the same for all matrices ?
         EXPECTS(a0.extent(1) == b0.extent(0));
         EXPECTS(a0.extent(0) == c0.extent(0));
         EXPECTS(b0.extent(1) == c0.extent(1));
@@ -169,6 +183,8 @@ namespace nda::blas {
   void gemm_batch_strided(get_value_t<X> alpha, X const &x, Y const &y, get_value_t<X> beta, C &&c) {
 
     EXPECTS(x.shape()[0] == y.shape()[0] and y.shape()[0] == c.shape()[0]);
+
+    //OPFIXME : pull out. Was to_mat before.
     auto to_arr = []<typename Z>(Z & z) -> auto & {
       if constexpr (is_conj_array_expr<Z>)
         return std::get<0>(z.a);
@@ -201,6 +217,7 @@ namespace nda::blas {
     // c is in C order: compute the transpose of the product in Fortran order
     if constexpr (has_C_layout<C>) {
       //Reconsider ..
+      //OPFIXME reconsider what ? Same trick as above ?? in op_a, op_b. 
       gemm_batch_strided(alpha, transposed_view<1, 2>(y), transposed_view<1, 2>(x), beta, transposed_view<1, 2>(std::forward<C>(c)));
       return;
     } else { // c is in Fortran order

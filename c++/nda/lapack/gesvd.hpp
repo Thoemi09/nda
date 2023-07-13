@@ -20,6 +20,8 @@
 
 namespace nda::lapack {
 
+  // OPFXIME : PUT in DOXYGEN FORMAT 
+
   /**
    * Computes the singular value decomposition (SVD) of a real/complex
    * M-by-N matrix A, computing the left and/or right singular
@@ -73,6 +75,9 @@ namespace nda::lapack {
     EXPECTS(u.indexmap().min_stride() == 1);
     EXPECTS(vt.indexmap().min_stride() == 1);
 
+    // OPFIXME : unify call, no need of this anymore ...
+    // Cf remarks.
+
     // Call host/device implementation depending on input
     auto gesvd = []<typename... Ts>(Ts && ...args) {
       if constexpr (mem::on_host<A>) {
@@ -92,6 +97,8 @@ namespace nda::lapack {
     gesvd('A', 'A', a.extent(0), a.extent(1), a.data(), get_ld(a), s.data(), u.data(), get_ld(u), vt.data(), get_ld(vt), &bufferSize_T, -1,
           rwork.data(), info);
     int bufferSize = std::ceil(std::real(bufferSize_T));
+
+    // OPFIXME : array not qualified. nda::array 
 
     // Allocate work buffer and perform actual library call
     array<T, 1, C_layout, heap<mem::get_addr_space<A>>> work(bufferSize);

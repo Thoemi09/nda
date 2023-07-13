@@ -63,8 +63,12 @@ namespace nda::blas {
     }
   }
 
+  //OPFIXME   NB : contiguous is compiled time checked, it must be garanteed ?
+  // Why not runtime check instead of the static assert ? 
+  // why address space of A ? what is they are not the same : need to check 
+  // See below
   /**
-   * Calculate the outer product of two (contiguous) arrays a and b
+   * Calculate the outer product of two contiguous arrays a and b
    *
    *  $$ c_{i,j,k,...,u,v,w,...} = a_{i,j,k,...} * b_{u,v,w,...} $$
    *
@@ -85,6 +89,10 @@ namespace nda::blas {
     } else {
       if (not a.is_contiguous()) NDA_RUNTIME_ERROR << "First argument to outer_product call has non-contiguous layout";
       if (not b.is_contiguous()) NDA_RUNTIME_ERROR << "Second argument to outer_product call has non-contiguous layout";
+
+      // OPFIXME : not correct. If A is device, B is unified, then C is what ? device ? unified ??
+      // use mem::combine ??
+      //auto res = zeros<get_value_t<A>, mem::combine<A,B>>(stdutil::join(a.shape(), b.shape()));
       auto res = zeros<get_value_t<A>, mem::get_addr_space<A>>(stdutil::join(a.shape(), b.shape()));
 
       auto a_vec = reshape(a, std::array{a.size()});

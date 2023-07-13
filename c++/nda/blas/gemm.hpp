@@ -63,6 +63,8 @@ namespace nda::blas {
            have_same_value_type_v<X, Y, C> and is_blas_lapack_v<get_value_t<X>>) //
   void gemm(get_value_t<X> alpha, X const &x, Y const &y, get_value_t<X> beta, C &&c) {
 
+    // OPFIXME : rename to clean_conj_expr ?? 
+    // in tools.
     auto to_mat = []<typename Z>(Z const &z) -> auto & {
       if constexpr (is_conj_array_expr<Z>)
         return std::get<0>(z.a);
@@ -77,6 +79,10 @@ namespace nda::blas {
 
     using A = decltype(a);
     using B = decltype(b);
+
+    // OPFIXME : shouldn't it be mem::have_compatible_addr_space_v ??
+    // Test : A, B on device, C on unified ??
+
     static_assert(mem::have_same_addr_space_v<A, B, C>, "Matrices must have same memory address space");
 
     EXPECTS(a.extent(1) == b.extent(0));
@@ -91,7 +97,7 @@ namespace nda::blas {
     // c is in C order: compute the transpose of the product in Fortran order
     if constexpr (has_C_layout<C>) {
       gemm(alpha, transpose(y), transpose(x), beta, transpose(std::forward<C>(c)));
-      return;
+      return; // OPFIXME : we don't need this return
     } else { // c is in Fortran order
       char op_a   = get_op<conj_A, /*transpose =*/has_C_layout<A>>;
       char op_b   = get_op<conj_B, /*transpose =*/has_C_layout<B>>;
