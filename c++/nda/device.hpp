@@ -18,6 +18,7 @@
 
 #include <mpi/mpi.hpp>
 #include <iostream>
+#include <exception>
 
 #ifdef NDA_HAVE_CUDA
 #include "cuda_runtime.h"

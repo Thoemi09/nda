@@ -393,7 +393,7 @@ void assign_from_ndarray(RHS const &rhs) { // FIXME noexcept {
 // -----------------------------------------------------
 
 template <typename Scalar>
-void fill_with_scalar(Scalar const &scalar) noexcept {
+void fill_with_scalar(Scalar const &scalar) {
   // we make a special implementation if the array is 1d strided or contiguous
   if constexpr (mem::on_host<self_t>) {
     if constexpr (has_layout_strided_1d<self_t>) { // possibly contiguous
