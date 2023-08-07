@@ -107,7 +107,7 @@ namespace nda::lapack {
 #if defined(NDA_HAVE_DEVICE)
       device::getrs(op, a.extent(1), b.extent(1), a.data(), get_ld(a), ipiv.data(), b.data(), get_ld(b), info);
 #else
-      static_assert(always_false<bool>," lapack on device without gpu support! Compile for GPU. ");
+      compile_error_no_gpu();
 #endif
     } else {
       f77::getrs(op, a.extent(1), b.extent(1), a.data(), get_ld(a), ipiv.data(), b.data(), get_ld(b), info);
