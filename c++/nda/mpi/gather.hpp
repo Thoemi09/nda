@@ -21,16 +21,22 @@
 
 #pragma once
 
+#include "./utils.hpp"
 #include "../basic_functions.hpp"
 #include "../concepts.hpp"
-#include "../exceptions.hpp"
+#include "../layout/range.hpp"
+#include "../macros.hpp"
+#include "../stdutil/array.hpp"
 #include "../traits.hpp"
 
 #include <mpi/mpi.hpp>
 
+#include <cstddef>
+#include <functional>
+#include <numeric>
+#include <span>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 /**
  * @ingroup av_mpi
@@ -39,10 +45,10 @@
  * @details An object of this class is returned when gathering nda::Array objects across multiple MPI processes.
  *
  * It models an nda::ArrayInitializer, that means it can be used to initialize and assign to nda::basic_array and
- * nda::basic_array_view objects. The target array will be a concatenation of the input arrays along the first
- * dimension (see nda::concatenate).
+ * nda::basic_array_view objects. The result will be a concatenation of the input arrays/views along their first
+ * dimension.
  *
- * See nda::mpi_gather for an example.
+ * See nda::mpi_gather for an example and more information.
  *
  * @tparam A nda::Array type to be gathered.
  */
@@ -51,11 +57,11 @@ struct mpi::lazy<mpi::tag::gather, A> {
   /// Value type of the array/view.
   using value_type = typename std::decay_t<A>::value_type;
 
-  /// Const view type of the array/view stored in the lazy object.
-  using const_view_type = decltype(std::declval<const A>()());
+  /// Type of the array/view stored in the lazy object.
+  using stored_type = A;
 
-  /// View of the array/view to be gathered.
-  const_view_type rhs;
+  /// Array/View to be gathered.
+  stored_type rhs;
 
   /// MPI communicator.
   mpi::communicator comm;
@@ -66,42 +72,48 @@ struct mpi::lazy<mpi::tag::gather, A> {
   /// Should all processes receive the result.
   const bool all{false}; // NOLINT (const is fine here)
 
+  /// Size of the gathered array/view.
+  mutable long gathered_size{0};
+
   /**
-   * @brief Compute the shape of the target array.
+   * @brief Compute the shape of the nda::ArrayInitializer object.
    *
-   * @details It is assumed that the shape of the input array is the same for all MPI processes except for the first
-   * dimension. The target shape will then be the same as the input shape, except that the extent of its first dimension
-   * will be the sum of the extents of the input arrays along the first dimension.
+   * @details The input arrays/views are simply concatenated along their first dimension. The shape of the initializer
+   * object depends on the MPI rank and whether it receives the data or not:
+   * - On receiving ranks, the shape is the same as the shape of the input array/view except for the first dimension,
+   * which is the sum of the extents of all input arrays/views along the first dimension.
+   * - On non-receiving ranks, the shape is empty, i.e. `(0,0,...,0)`.
    *
    * @warning This makes an MPI call.
    *
-   * @return Shape of the target array.
+   * @return Shape of the nda::ArrayInitializer object.
    */
   [[nodiscard]] auto shape() const {
-    auto dims = rhs.shape();
-    long dim0 = dims[0];
-    if (!all) {
-      dims[0] = mpi::reduce(dim0, comm, root);
-      if (comm.rank() != root) dims[0] = 1;
-    } else
-      dims[0] = mpi::all_reduce(dim0, comm);
+    auto dims     = rhs.shape();
+    dims[0]       = mpi::all_reduce(dims[0], comm);
+    gathered_size = std::accumulate(dims.begin(), dims.end(), 1l, std::multiplies<>());
+    if (!all && comm.rank() != root) dims = nda::stdutil::make_initialized_array<dims.size()>(0l);
     return dims;
   }
 
   /**
    * @brief Execute the lazy MPI operation and write the result to a target array/view.
    *
-   * @tparam T nda::Array type of the target array/view.
+   * @details The data will be gathered directly into the memory handle of the target array/view.
+   *
+   * Throws an exception if
+   * - the target array/view is not contiguous with positive strides on receiving ranks,
+   * - a target view does not have the correct shape on receiving ranks,
+   * - the target array/view is not in C-layout on receiving ranks or
+   * - one of the MPI calls fails.
+   *
+   * @tparam T nda::Array type with C-layout.
    * @param target Target array/view.
    */
   template <nda::Array T>
+    requires(std::decay_t<T>::is_stride_order_C())
   void invoke(T &&target) const { // NOLINT (temporary views are allowed here)
-    // check if the arrays can be used in the MPI call
-    if (not target.is_contiguous() or not target.has_positive_strides())
-      NDA_RUNTIME_ERROR << "Error in MPI gather for nda::Array: Target array needs to be contiguous with positive strides";
-
-    static_assert(std::decay_t<A>::layout_t::stride_order_encoded == std::decay_t<T>::layout_t::stride_order_encoded,
-                  "Error in MPI gather for nda::Array: Incompatible stride orders");
+    using namespace nda::detail;
 
     // special case for non-mpi runs
     if (not mpi::has_env) {
@@ -109,28 +121,23 @@ struct mpi::lazy<mpi::tag::gather, A> {
       return;
     }
 
-    // get target shape and resize or check the target array
-    auto dims = shape();
-    if (all || (comm.rank() == root)) nda::resize_or_check_if_view(target, dims);
+    // get target shape, resize or check the target array/view and prepare output span
+    auto dims        = shape();
+    auto target_span = std::span{target.data(), 0};
+    if (all || (comm.rank() == root)) {
+      // check if the target array/view can be used in the MPI call
+      check_layout_mpi_compatible(target, "mpi_gather");
 
-    // gather receive counts and memory displacements
-    auto recvcounts   = std::vector<int>(comm.size());
-    auto displs       = std::vector<int>(comm.size() + 1, 0);
-    int sendcount     = rhs.size();
-    auto mpi_int_type = mpi::mpi_type<int>::get();
-    if (!all)
-      MPI_Gather(&sendcount, 1, mpi_int_type, &recvcounts[0], 1, mpi_int_type, root, comm.get());
-    else
-      MPI_Allgather(&sendcount, 1, mpi_int_type, &recvcounts[0], 1, mpi_int_type, comm.get());
+      // resize/check the size of the target array/view
+      nda::resize_or_check_if_view(target, dims);
 
-    for (int r = 0; r < comm.size(); ++r) displs[r + 1] = recvcounts[r] + displs[r];
+      // prepare the output span
+      target_span = std::span{target.data(), static_cast<std::size_t>(target.size())};
+    }
 
     // gather the data
-    auto mpi_value_type = mpi::mpi_type<value_type>::get();
-    if (!all)
-      MPI_Gatherv((void *)rhs.data(), sendcount, mpi_value_type, target.data(), &recvcounts[0], &displs[0], mpi_value_type, root, comm.get());
-    else
-      MPI_Allgatherv((void *)rhs.data(), sendcount, mpi_value_type, target.data(), &recvcounts[0], &displs[0], mpi_value_type, comm.get());
+    auto rhs_span = std::span{rhs.data(), static_cast<std::size_t>(rhs.size())};
+    mpi::gather_range(rhs_span, target_span, gathered_size, comm, root, all);
   }
 };
 
@@ -140,36 +147,48 @@ namespace nda {
    * @ingroup av_mpi
    * @brief Implementation of an MPI gather for nda::basic_array or nda::basic_array_view types.
    *
-   * @details Since the returned `mpi::lazy` object models an nda::ArrayInitializer, it can be used to initialize/assign
-   * to nda::basic_array and nda::basic_array_view objects:
+   * @details The function gathers C-ordered input arrays/views from all processes in the given communicator and
+   * makes the result available on the root process (`all == false`) or on all processes (`all == true`). The
+   * arrays/views are joined along the first dimension.
+   *
+   * Throws an exception, if a given array/view is not contiguous with positive strides. Furthermore, it is expected
+   * that the input arrays/views have the same shape on all processes except for the first dimension.
+   *
+   * This function is lazy, i.e. it returns an mpi::lazy<mpi::tag::gather, A> object without performing the actual MPI
+   * operation. Since the returned object models an nda::ArrayInitializer, it can be used to initialize/assign to
+   * nda::basic_array and nda::basic_array_view objects:
    *
    * @code{.cpp}
    * // create an array on all processes
-   * nda::array<int, 2> arr(3, 4);
+   * nda::array<int, 2> A(3, 4);
    *
    * // ...
    * // fill array on each process
    * // ...
    *
-   * // gather the array to the root process
-   * nda::array<int, 2> res = mpi::gather(arr);
+   * // gather the arrays on the root process
+   * nda::array<int, 2> B = mpi::gather(A);
    * @endcode
    *
-   * Here, the array `res` will have a shape of `(3 * comm.size(), 4)`.
+   * Here, the array `B` has the shape `(3 * comm.size(), 4)` on the root process and `(0, 0)` on all other processes.
    *
-   * @tparam A nda::basic_array or nda::basic_array_view type.
+   * @warning MPI calls are done in the `invoke` and `shape` methods of the `mpi::lazy` object. If one rank calls one of
+   * these methods, all ranks in the communicator need to call the same method. Otherwise, the program will deadlock.
+   *
+   * @tparam A nda::basic_array or nda::basic_array_view type with C-layout.
    * @param a Array or view to be gathered.
    * @param comm `mpi::communicator` object.
    * @param root Rank of the root process.
    * @param all Should all processes receive the result of the gather.
-   * @return An `mpi::lazy` object modelling an nda::ArrayInitializer.
+   * @return An mpi::lazy<mpi::tag::gather, A> object modelling an nda::ArrayInitializer.
    */
   template <typename A>
   ArrayInitializer<std::remove_reference_t<A>> auto mpi_gather(A &&a, mpi::communicator comm = {}, int root = 0, bool all = false)
-    requires(is_regular_or_view_v<A>)
+    requires(is_regular_or_view_v<A> and std::decay_t<A>::is_stride_order_C())
   {
-    if (not a.is_contiguous() or not a.has_positive_strides())
-      NDA_RUNTIME_ERROR << "Error in MPI gather for nda::Array: Array needs to be contiguous with positive strides";
+    EXPECTS_WITH_MESSAGE(detail::have_mpi_equal_shapes(a(nda::range(1), nda::ellipsis{}), comm),
+                         "Shapes of arrays/views must be equal save the first one in nda::mpi_gather");
+    detail::check_layout_mpi_compatible(a, "mpi_gather");
     return mpi::lazy<mpi::tag::gather, A>{std::forward<A>(a), comm, root, all};
   }
 

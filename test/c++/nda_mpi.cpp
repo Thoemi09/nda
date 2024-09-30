@@ -164,14 +164,55 @@ TEST_F(NDAMpi, BroadcastOtherLayouts) {
   }
 }
 
-TEST_F(NDAMpi, Gather) {
-  // all gather an array
+TEST_F(NDAMpi, Gather1DArray) {
+  // all gather 1-dimensional arrays of different sizes
+  auto C        = nda::array<int, 1>(comm.rank() + 1);
+  C             = comm.rank();
+  auto C_gather = nda::array<int, 1>(mpi::all_gather(C, comm));
+  EXPECT_EQ(C_gather.size(), comm.size() * (comm.size() + 1) / 2);
+  for (int i = 0; i < comm.size(); ++i) {
+    auto view = C_gather(nda::range(i * (i + 1) / 2, (i + 1) * (i + 2) / 2));
+    auto exp  = nda::array<int, 1>(i + 1, i);
+    EXPECT_ARRAY_EQ(exp, view);
+  }
+}
+
+TEST_F(NDAMpi, GatherCLayout) {
+  // all gather a C-layout array into a C-layout array
   auto B               = nda::make_regular(A * (comm.rank() + 1));
   decltype(B) B_gather = mpi::all_gather(B, comm);
-  EXPECT_EQ(B_gather.shape()[0], comm.size() * B.shape()[0]);
+  EXPECT_EQ(B_gather.shape(), (std::array{comm.size() * shape_3d[0], shape_3d[1], shape_3d[2]}));
   for (int i = 0; i < comm.size(); ++i) {
-    auto view = B_gather(nda::range(i * B.shape()[0], (i + 1) * B.shape()[0]), nda::range::all, nda::range::all);
+    auto view = B_gather(nda::range(i * shape_3d[0], (i + 1) * shape_3d[0]), nda::range::all, nda::range::all);
     EXPECT_ARRAY_EQ(nda::make_regular(A * (i + 1)), view);
+  }
+
+  // gather a C-layout matrix into a C-layout matrix
+  decltype(M) N = nda::make_regular(M * (comm.rank() + 1));
+  auto N_gather = nda::array<std::complex<double>, 2>(mpi::gather(N, comm));
+  if (comm.rank() == root) {
+    EXPECT_EQ(N_gather.shape(), (std::array{comm.size() * shape_2d[0], shape_2d[1]}));
+    for (int i = 0; i < comm.size(); ++i) {
+      auto view = N_gather(nda::range(i * shape_2d[0], (i + 1) * shape_2d[0]), nda::range::all);
+      EXPECT_ARRAY_EQ(nda::make_regular(M * (i + 1)), view);
+    }
+  } else {
+    EXPECT_TRUE(N_gather.empty());
+    EXPECT_TRUE(N_gather.size() == 0);
+  }
+}
+
+TEST_F(NDAMpi, GatherOtherLayouts) {
+  // all gather a non C-layout array by first reshaping it
+  constexpr auto perm     = decltype(A2)::layout_t::stride_order;
+  constexpr auto inv_perm = nda::permutations::inverse(perm);
+
+  decltype(A2) B2  = nda::make_regular(A2 * (comm.rank() + 1));
+  auto B2_gather   = nda::array<long, 3>(mpi::all_gather(nda::permuted_indices_view<nda::encode(inv_perm)>(B2), comm));
+  auto B2_gather_v = nda::permuted_indices_view<nda::encode(perm)>(B2_gather);
+  for (int i = 0; i < comm.size(); ++i) {
+    auto view = B2_gather_v(nda::range::all, nda::range(i * shape_3d[1], (i + 1) * shape_3d[1]), nda::range::all);
+    EXPECT_ARRAY_EQ(nda::make_regular(A2 * (i + 1)), view);
   }
 }
 
