@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Authors: Thomas Hahn
+// Authors: Thomas Hahn, Olivier Parcollet, Nils Wentzell
 
 /**
  * @file
@@ -21,12 +21,14 @@
 
 #pragma once
 
+#include "./utils.hpp"
 #include "../basic_functions.hpp"
-#include "../concepts.hpp"
-#include "../exceptions.hpp"
 #include "../traits.hpp"
 
 #include <mpi/mpi.hpp>
+
+#include <cstddef>
+#include <span>
 
 namespace nda {
 
@@ -38,18 +40,21 @@ namespace nda {
    * array/view is resized/checked to match the broadcasted dimensions and the data is written into the given
    * array/view.
    *
-   * Throws an exception, if a given view does not have the correct shape.
+   * Throws an exception, if
+   * - a given view does not have the correct shape,
+   * - the array/view is not contiguous with positive strides or
+   * - one of the MPI calls fails.
    *
    * @code{.cpp}
    * // create an array on all processes
-   * nda::array<int, 2> arr(3, 4);
+   * nda::array<int, 2> A(3, 4);
    *
    * // ...
    * // fill array on root process
    * // ...
    *
    * // broadcast the array to all processes
-   * mpi::broadcast(arr);
+   * mpi::broadcast(A);
    * @endcode
    *
    * @tparam A nda::basic_array or nda::basic_array_view type.
@@ -61,11 +66,11 @@ namespace nda {
   void mpi_broadcast(A &a, mpi::communicator comm = {}, int root = 0)
     requires(is_regular_or_view_v<A>)
   {
-    static_assert(has_contiguous_layout<A>, "Error in MPI broadcast for nda::Array: Array needs to be contiguous");
+    detail::check_layout_mpi_compatible(a, "mpi_broadcast");
     auto dims = a.shape();
-    MPI_Bcast(&dims[0], dims.size(), mpi::mpi_type<typename decltype(dims)::value_type>::get(), root, comm.get());
+    mpi::broadcast(dims, comm, root);
     if (comm.rank() != root) { resize_or_check_if_view(a, dims); }
-    MPI_Bcast(a.data(), a.size(), mpi::mpi_type<typename A::value_type>::get(), root, comm.get());
+    mpi::broadcast_range(std::span{a.data(), static_cast<std::size_t>(a.size())}, comm, root);
   }
 
 } // namespace nda
