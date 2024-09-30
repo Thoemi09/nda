@@ -216,7 +216,7 @@ TEST_F(NDAMpi, GatherOtherLayouts) {
   }
 }
 
-TEST_F(NDAMpi, Reduce) {
+TEST_F(NDAMpi, ReduceCLayout) {
   // reduce an array
   decltype(A) A_sum = mpi::reduce(A, comm);
   if (comm.rank() == 0) { EXPECT_ARRAY_EQ(nda::make_regular(A * comm.size()), A_sum); }
@@ -227,6 +227,19 @@ TEST_F(NDAMpi, Reduce) {
   nda::array<long, 1> B_min = mpi::all_reduce(B(0, 0, nda::range::all), comm, MPI_MIN);
   EXPECT_ARRAY_EQ(B_max, A(0, 0, nda::range::all) * comm.size());
   EXPECT_ARRAY_EQ(B_min, A(0, 0, nda::range::all));
+}
+
+TEST_F(NDAMpi, ReduceOtherLayouts) {
+  // reduce an array
+  decltype(A2) A2_sum = mpi::reduce(A2, comm);
+  if (comm.rank() == 0) { EXPECT_ARRAY_EQ(nda::make_regular(A2 * comm.size()), A2_sum); }
+
+  // all reduce an array view
+  auto B2                    = nda::make_regular(A2 * (comm.rank() + 1));
+  nda::array<long, 1> B2_max = mpi::all_reduce(B2(0, 0, nda::range::all), comm, MPI_MAX);
+  nda::array<long, 1> B2_min = mpi::all_reduce(B2(0, 0, nda::range::all), comm, MPI_MIN);
+  EXPECT_ARRAY_EQ(B2_max, A2(0, 0, nda::range::all) * comm.size());
+  EXPECT_ARRAY_EQ(B2_min, A2(0, 0, nda::range::all));
 }
 
 TEST_F(NDAMpi, ReduceCustomType) {
