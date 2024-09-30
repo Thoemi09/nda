@@ -216,6 +216,28 @@ TEST_F(NDAMpi, GatherOtherLayouts) {
   }
 }
 
+TEST_F(NDAMpi, ScatterCLayout) {
+  // scatter a C-layout array
+  decltype(A) A_scatter = mpi::scatter(A, comm);
+  auto chunked_rg       = itertools::chunk_range(0, A.shape()[0], comm.size(), comm.rank());
+  auto exp_shape        = std::array<long, 3>{chunked_rg.second - chunked_rg.first, shape_3d[1], shape_3d[2]};
+  EXPECT_EQ(exp_shape, A_scatter.shape());
+  EXPECT_ARRAY_EQ(A(nda::range(chunked_rg.first, chunked_rg.second), nda::ellipsis{}), A_scatter);
+}
+
+TEST_F(NDAMpi, ScatterOtherLayouts) {
+  // scatter a non C-layout array by first reshaping it
+  constexpr auto perm     = decltype(A2)::layout_t::stride_order;
+  constexpr auto inv_perm = nda::permutations::inverse(perm);
+
+  decltype(A) A2_scatter = mpi::scatter(nda::permuted_indices_view<nda::encode(inv_perm)>(A2), comm);
+  auto A2_scatter_v      = nda::permuted_indices_view<nda::encode(perm)>(A2_scatter);
+  auto chunked_rg        = itertools::chunk_range(0, A2.shape()[1], comm.size(), comm.rank());
+  auto exp_shape         = std::array<long, 3>{shape_3d[0], chunked_rg.second - chunked_rg.first, shape_3d[2]};
+  EXPECT_EQ(exp_shape, A2_scatter_v.shape());
+  EXPECT_ARRAY_EQ(A2(nda::range::all, nda::range(chunked_rg.first, chunked_rg.second), nda::range::all), A2_scatter_v);
+}
+
 TEST_F(NDAMpi, ReduceCLayout) {
   // reduce an array
   decltype(A) A_sum = mpi::reduce(A, comm);
@@ -261,16 +283,6 @@ TEST_F(NDAMpi, ReduceCustomType) {
   nda::array<matrix_t, 1> B_sum = mpi::all_reduce(B, comm);
 
   EXPECT_ARRAY_EQ(B_sum, exp_sum);
-}
-
-TEST_F(NDAMpi, Scatter) {
-  // scatter an array
-  decltype(A) A_scatter = mpi::scatter(A, comm);
-  auto chunked_rg       = itertools::chunk_range(0, A.shape()[0], comm.size(), comm.rank());
-  auto exp_shape        = A.shape();
-  exp_shape[0]          = chunked_rg.second - chunked_rg.first;
-  EXPECT_EQ(exp_shape, A_scatter.shape());
-  EXPECT_ARRAY_EQ(A(nda::range(chunked_rg.first, chunked_rg.second), nda::ellipsis{}), A_scatter);
 }
 
 TEST_F(NDAMpi, BroadcastTransposedMatrix) {
@@ -325,6 +337,23 @@ TEST_F(NDAMpi, VariousCollectiveCommunications) {
   // all reduce an array
   arr_t R2 = mpi::all_reduce(A, comm);
   EXPECT_ARRAY_NEAR(R2, comm.size() * A);
+}
+
+TEST_F(NDAMpi, PassingTemporaryObjects) {
+  auto A         = nda::array<int, 1>{1, 2, 3};
+  auto lazy_arr  = mpi::gather(nda::array<int, 1>{1, 2, 3}, comm);
+  auto res_arr   = nda::array<int, 1>(lazy_arr);
+  auto lazy_view = mpi::gather(A(), comm);
+  auto res_view  = nda::array<int, 1>(lazy_view);
+  if (comm.rank() == 0) {
+    for (long i = 0; i < comm.size(); ++i) {
+      EXPECT_ARRAY_EQ(res_arr(nda::range(i * 3, (i + 1) * 3)), A);
+      EXPECT_ARRAY_EQ(res_view(nda::range(i * 3, (i + 1) * 3)), A);
+    }
+  } else {
+    EXPECT_TRUE(res_arr.empty());
+    EXPECT_TRUE(res_view.empty());
+  }
 }
 
 MPI_TEST_MAIN
