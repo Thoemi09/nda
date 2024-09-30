@@ -48,6 +48,38 @@ struct NDAMpi : public ::testing::Test {
   mpi::communicator comm;
 };
 
+TEST_F(NDAMpi, ExpectEqualRanks) {
+  // test the expect_equal_ranks function
+  if (comm.size() > 1) {
+    EXPECT_TRUE(nda::detail::have_mpi_equal_ranks(A, comm));
+    if (comm.rank() == 1) {
+      auto B = nda::array<long, 2>::zeros(6, 4);
+      EXPECT_FALSE(nda::detail::have_mpi_equal_ranks(B, comm));
+    } else {
+      EXPECT_FALSE(nda::detail::have_mpi_equal_ranks(A, comm));
+    }
+  }
+}
+
+TEST_F(NDAMpi, ExpectEqualShapes) {
+  // test the expect_equal_shapes function
+  if (comm.size() > 1) {
+    EXPECT_TRUE(nda::detail::have_mpi_equal_shapes(A, comm));
+    if (comm.rank() == 1) A = nda::array<long, 3>::zeros(6, 5, 2);
+    EXPECT_FALSE(nda::detail::have_mpi_equal_shapes(A, comm));
+  }
+}
+
+TEST_F(NDAMpi, ExpectEqualShapeSaveFirst) {
+  // test the expect_equal_shape_save_first function
+  if (comm.size() > 1) {
+    if (comm.rank() == 1) A = nda::array<long, 3>::zeros(5, 4, 2);
+    EXPECT_TRUE(nda::detail::have_mpi_equal_shapes(A(nda::range{1}, nda::ellipsis{}), comm));
+    if (comm.rank() == 1) A = nda::array<long, 3>::zeros(5, 5, 2);
+    EXPECT_FALSE(nda::detail::have_mpi_equal_shapes(A(nda::range{1}, nda::ellipsis{}), comm));
+  }
+}
+
 TEST_F(NDAMpi, Broadcast) {
   // broadcast to arrays with same dimensions
   auto A_bcast = A;
