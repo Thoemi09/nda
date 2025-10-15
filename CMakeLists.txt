@@ -158,6 +158,9 @@ add_subdirectory(deps)
 # Build and install the library
 add_subdirectory(c++/${PROJECT_NAME})
 
+# Examples
+add_subdirectory(examples)
+
 # Tests
 if(Build_Tests)
   add_subdirectory(test)
