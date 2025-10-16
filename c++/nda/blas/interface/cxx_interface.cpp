@@ -48,10 +48,14 @@ namespace {
 #define F77_ddot F77_GLOBAL(ddot, DDOT)
 #define F77_zdotu F77_GLOBAL(zdotu, ZDOTU)
 #define F77_zdotc F77_GLOBAL(zdotc, ZDOTC)
+#define F77_dnrm2 F77_GLOBAL(dnrm2, DNRM2)
+#define F77_dznrm2 F77_GLOBAL(dznrm2, DZNRM2)
 extern "C" {
 double F77_ddot(FINT, const double *, FINT, const double *, FINT);
 nda_complex_double F77_zdotu(FINT, const double *, FINT, const double *, FINT);
 nda_complex_double F77_zdotc(FINT, const double *, FINT, const double *, FINT);
+double F77_dnrm2(FINT, const double *, FINT);
+double F77_dznrm2(FINT, const double *, FINT);
 }
 
 namespace nda::blas::f77 {
@@ -189,5 +193,8 @@ namespace nda::blas::f77 {
   void swap(int N, dcomplex *x, int incx, dcomplex *Y, int incy) {                                  // NOLINT (this is a BLAS swap)
     F77_zswap(&N, blacplx(x), &incx, blacplx(Y), &incy);
   }
+
+  double nrm2(int N, const double *x, int incx) { return F77_dnrm2(&N, x, &incx); }
+  double nrm2(int N, const dcomplex *x, int incx) { return F77_dznrm2(&N, blacplx(x), &incx); }
 
 } // namespace nda::blas::f77

@@ -16,5 +16,6 @@
 #include "./blas/gemm_batch.hpp"
 #include "./blas/gemv.hpp"
 #include "./blas/ger.hpp"
+#include "./blas/nrm2.hpp"
 #include "./blas/scal.hpp"
 #include "./blas/tools.hpp"

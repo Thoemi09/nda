@@ -61,4 +61,7 @@ namespace nda::blas::f77 {
   void swap(int N, double *x, int incx, double *Y, int incy);     // NOLINT (this is a BLAS swap)
   void swap(int N, dcomplex *x, int incx, dcomplex *Y, int incy); // NOLINT (this is a BLAS swap)
 
+  double nrm2(int N, const double *x, int incx);
+  double nrm2(int N, const dcomplex *x, int incx);
+
 } // namespace nda::blas::f77
