@@ -1,0 +1,2 @@
+/usr/bin/ar qc libh5_c.a CMakeFiles/h5_c.dir/array_interface.cpp.o CMakeFiles/h5_c.dir/file.cpp.o CMakeFiles/h5_c.dir/format.cpp.o CMakeFiles/h5_c.dir/group.cpp.o CMakeFiles/h5_c.dir/object.cpp.o CMakeFiles/h5_c.dir/stl/string.cpp.o CMakeFiles/h5_c.dir/stl/vector.cpp.o
+/usr/bin/ranlib libh5_c.a

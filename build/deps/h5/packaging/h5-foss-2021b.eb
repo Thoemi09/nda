@@ -1,0 +1,59 @@
+easyblock = 'CMakeMake'
+
+name = 'h5'
+version = '1.3.0'
+
+homepage = 'https://triqs.github.io/h5/'
+description = """
+  h5 is a high-level C++ interface to the hdf5 library, which
+  - Provides write and read functions for various STL container types
+  - Provides a generic `array_interface` to store and load multi-dimensional arrays
+  - Takes an RAII approach to manage the reference counting.
+  - Comes with Python bindings.
+"""
+
+docurls = ['https://triqs.github.io/h5/%(version_major_minor)s.x/']
+software_license = 'LicenseGPLv3'
+
+toolchain = {'name': 'foss', 'version': '2021b'}
+toolchainopts = {'pic': True, 'usempi': True}
+
+source_urls = ['https://github.com/TRIQS/h5/releases/download/%(version)s/']
+sources = ['h5-%(version)s.tar.gz']
+checksums = ['PUT HERE THE SHA256 OF THE RELEASE TARBALL']
+
+dependencies = [
+    ('Python', '3.9.6'),
+    ('SciPy-bundle', '2021.10'),
+    ('Clang', '13.0.1'),
+    ('Clang-Python-bindings', '13.0.1'),
+    ('HDF5', '1.10.7'),
+]
+
+builddependencies = [
+    ('CMake', '3.22.1')
+]
+
+separate_build_dir = True
+
+runtest = 'test'
+
+sanity_check_paths = {
+    'files': ['lib/libh5_c.a'],
+    'dirs': ['include/h5', 'lib', 'share',
+             'lib/python%(pyshortver)s/site-packages/h5'],
+}
+
+sanity_check_commands = ["python -c 'import h5'"]
+
+modextrapaths = {
+    'CPLUS_INCLUDE_PATH': 'include',
+    'PYTHONPATH': 'lib/python%(pyshortver)s/site-packages',
+    'CMAKE_PREFIX_PATH': 'lib/cmake/h5',
+}
+modextravars = {
+    'H5_ROOT': '%(installdir)s',
+    'H5_VERSION': '%(version)s',
+}
+
+moduleclass = 'phys'

@@ -1,0 +1,45 @@
+{% set version = "1.2.0" %}
+
+package:
+  name: itertools
+  version: {{ version }}
+
+source:
+  url: https://github.com/TRIQS/itertools/releases/download/{{ version }}/itertools-{{ version }}.tar.gz
+  sha256: PUT HERE THE SHA256 OF YOUR RELEASE TARBALL
+
+build:
+  number: 0
+  skip: True  # [win or py<30]
+
+requirements:
+  build:
+    - cmake
+    - make
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+  host:
+    - {{ mpi }}
+  run:
+    - {{ mpi }}
+
+test:
+  commands:
+    - export OMPI_MCA_btl=self,tcp
+    - export OMPI_MCA_plm=isolated
+    - export OMPI_MCA_rmaps_base_oversubscribe=yes
+    - export OMPI_MCA_btl_vader_single_copy_mechanism=none
+    - export mpiexec="mpiexec --allow-run-as-root"
+    - python -c "import itertools"
+
+about:
+  home: https://triqs.github.io/itertools
+  license: Apache-2.0
+  license_family: Apache
+  license_file: LICENSE.txt
+  summary: 'A lightweight C++ library to alter C++ ranges'
+
+extra:
+  recipe-maintainers:
+    - wentzell
+    - pgunn
