@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/itertools.dir/link.d CMakeFiles/itertools.dir/itertools.cpp.o -o itertools   -L/home/runner/work/nda/nda/build/deps/itertools_src/c++  -Wl,-rpath,/home/runner/work/nda/nda/build/deps/itertools_src/c++ ../../../../lib/libgtest_main.a ../../../../lib/libgtest.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libnda_c.a CMakeFiles/nda_c.dir/blas/interface/cxx_interface.cpp.o CMakeFiles/nda_c.dir/lapack/interface/cxx_interface.cpp.o
+/usr/bin/ranlib libnda_c.a

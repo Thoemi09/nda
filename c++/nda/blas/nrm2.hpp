@@ -32,7 +32,7 @@ namespace nda::blas {
    * @return The Euclidean norm of the vector.
    */
   template <MemoryVector X>
-    requires(is_blas_lapack_v<get_value_t<X>>)
+    requires(is_blas_lapack_v<get_value_t<X>> and not mem::have_device_compatible_addr_space<X>)
   auto nrm2(X const &x) {
     // perform actual library call
     return f77::nrm2(x.size(), x.data(), x.indexmap().strides()[0]);
