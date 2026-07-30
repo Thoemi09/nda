@@ -69,14 +69,12 @@ namespace nda {
    * Output:
    *
    * ```
-   *
-   * [[1,1]
-   *  [1,1]
-   *  [1,1]]
-   *
-   * [[42,42]
-   *  [1,1]
-   *  [1,1]]
+   * [[1 1]
+   *  [1 1]
+   *  [1 1]]
+   * [[42 42]
+   *  [ 1  1]
+   *  [ 1  1]]
    * ```
    *
    * Arrays and views share a lot of the same operations and functionalities. To turn a view into a regular array, use

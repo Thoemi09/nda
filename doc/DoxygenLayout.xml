@@ -55,6 +55,7 @@
           <tab type="user" url="@ref nda::default_accessor::accessor" title="default_accessor::accessor"/>
           <tab type="user" url="@ref nda::no_alias_accessor" title="no_alias_accessor"/>
           <tab type="user" url="@ref nda::no_alias_accessor::accessor" title="no_alias_accessor::accessor"/>
+          <tab type="user" url="@ref std::formatter<A, char>" title="std::formatter"/>
         </tab>
         <tab type="user" url="@ref av_factories" title="Factories and transformations"/>
         <tab type="user" url="@ref av_hdf5" title="HDF5 support"/>
