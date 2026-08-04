@@ -203,7 +203,7 @@ struct std::formatter<A, char> {
     }
     elem_spec_ = std::string_view(first, it);
     if (not elem_spec_.empty()) {
-      if constexpr (not nda::detail::has_std_formatter_v<nda::remove_complex_t<nda::get_value_t<A>>>)
+      if constexpr (not nda::detail::has_std_formatter_v<typename nda::remove_complex<nda::get_value_t<A>>::type>)
         throw std::format_error("Error in std::formatter<nda::Array>: Element type is not formattable, only \"{}\" is supported");
     }
     return it;
