@@ -55,6 +55,8 @@
           <tab type="user" url="@ref nda::default_accessor::accessor" title="default_accessor::accessor"/>
           <tab type="user" url="@ref nda::no_alias_accessor" title="no_alias_accessor"/>
           <tab type="user" url="@ref nda::no_alias_accessor::accessor" title="no_alias_accessor::accessor"/>
+          <tab type="user" url="@ref nda::print_options" title="print_options"/>
+          <tab type="user" url="@ref nda::array_with_opts" title="array_with_opts"/>
           <tab type="user" url="@ref std::formatter<A, char>" title="std::formatter"/>
         </tab>
         <tab type="user" url="@ref av_factories" title="Factories and transformations"/>

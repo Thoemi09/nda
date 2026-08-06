@@ -84,12 +84,14 @@ namespace nda {
    * Output:
    *
    * ```
-   * [[1 1 1]
-   *  [1 1 1]
-   *  [1 1 1]]
-   * [[0 1 1]
-   *  [0 1 1]
-   *  [0 1 1]]
+   *
+   * [[1,1,1]
+   *  [1,1,1]
+   *  [1,1,1]]
+   *
+   * [[0,1,1]
+   *  [0,1,1]
+   *  [0,1,1]]
    * ```
    *
    * Views are usually created by taking a slice of a regular nda::basic_array or another view. In the example above,

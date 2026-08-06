@@ -16,18 +16,10 @@
 #include "./layout/idx_map.hpp"
 #include "./layout/permutation.hpp"
 #include "./map.hpp"
-#include "./pretty_print.hpp"
 #include "./traits.hpp"
 
 #include <cstdint>
 #include <ostream>
-
-#if defined(__cpp_lib_format)
-#include <algorithm>
-#include <format>
-#include <string>
-#include <string_view>
-#endif
 
 namespace nda {
 
@@ -78,9 +70,6 @@ namespace nda {
   /**
    * @brief Write an nda::basic_array or nda::basic_array_view to a `std::ostream`.
    *
-   * @details Uses the rank-generic, numpy-like format of nda::print_to with default nda::print_options. Use
-   * nda::print_to directly to print with non-default options.
-   *
    * @tparam A Type of the nda::basic_array or nda::basic_array_view.
    * @param sout `std::ostream` object.
    * @param a nda::basic_array or nda::basic_array_view object.
@@ -90,7 +79,38 @@ namespace nda {
   std::ostream &operator<<(std::ostream &sout, A const &a)
     requires(is_regular_or_view_v<A>)
   {
-    return print_to(sout, a);
+    // 1-dimensional array/view
+    if constexpr (A::rank == 1) {
+      sout << "[";
+      auto const &len = a.indexmap().lengths();
+      for (size_t i = 0; i < len[0]; ++i) sout << (i > 0 ? "," : "") << a(i);
+      sout << "]";
+    }
+
+    // 2-dimensional array/view
+    if constexpr (A::rank == 2) {
+      auto const &len = a.indexmap().lengths();
+      sout << "\n[";
+      for (size_t i = 0; i < len[0]; ++i) {
+        sout << (i == 0 ? "[" : " [");
+        for (size_t j = 0; j < len[1]; ++j) sout << (j > 0 ? "," : "") << a(i, j);
+        sout << "]" << (i == len[0] - 1 ? "" : "\n");
+      }
+      sout << "]";
+    }
+
+    // FIXME : not very pretty, do better here, but that was the array's way
+    // higher-dimensional array/view (flat representation)
+    if constexpr (A::rank > 2) {
+      sout << "[";
+      for (bool first = true; auto &v : a) {
+        sout << (first ? "" : ",") << v;
+        first = false;
+      }
+      sout << "]";
+    }
+
+    return sout;
   }
 
   /**
@@ -161,70 +181,3 @@ namespace nda {
   /** @} */
 
 } // namespace nda
-
-#if defined(__cpp_lib_format)
-
-/**
- * @ingroup av_utils
- * @brief `std::formatter` specialization for nda::Array types.
- *
- * @details Always prints the values of the array element-wise, in the rank-generic, numpy-like format of
- * nda::print_to with default nda::print_options. The format spec is forwarded to the *elements*, i.e.
- * `std::format("{:.3f}", A)` applies `.3f` to every element of `A`. For `std::complex` elements it is applied to the
- * real and the imaginary part separately, since `std::formatter` is not specialized for `std::complex`.
- *
- * Note that this also formats the lazy expression types, in which case the values of the expression are printed
- * rather than its structure. This differs from nda::operator<<, which prints the structure of an expression.
- *
- * Dynamic width and precision arguments, e.g. `"{:>{}}"`, are not supported and lead to a compile time error. Only
- * `char` output is supported, i.e. formatting an array into a `std::wstring` is a compile time error.
- *
- * @tparam A nda::Array type to be formatted.
- */
-template <nda::Array A>
-struct std::formatter<A, char> {
-  private:
-  // Format spec applied to the elements. This is a view into the format string, which outlives the format call.
-  std::string_view elem_spec_{};
-
-  public:
-  /**
-   * @brief Parse the format spec, which is applied to the elements of the array.
-   *
-   * @param ctx Format parse context.
-   * @return Iterator past the end of the parsed format spec.
-   */
-  constexpr auto parse(std::format_parse_context &ctx) {
-    auto const first = ctx.begin();
-    auto it          = first;
-    while (it != ctx.end() and *it != '}') {
-      if (*it == '{') throw std::format_error("Error in std::formatter<nda::Array>: Dynamic width or precision arguments are not supported");
-      ++it;
-    }
-    elem_spec_ = std::string_view(first, it);
-    if (not elem_spec_.empty()) {
-      if constexpr (not nda::detail::has_std_formatter_v<typename nda::remove_complex<nda::get_value_t<A>>::type>)
-        throw std::format_error("Error in std::formatter<nda::Array>: Element type is not formattable, only \"{}\" is supported");
-    }
-    return it;
-  }
-
-  /**
-   * @brief Format an nda::Array into the output of the format context.
-   *
-   * @param a nda::Array object to format.
-   * @param ctx Format context to write the output to.
-   * @return Iterator past the end of the written output.
-   */
-  template <typename FmtCtx>
-  auto format(A const &a, FmtCtx &ctx) const {
-    // With an empty spec, the elements are rendered with the stream operator, exactly as nda::operator<< does. This
-    // is what makes std::format("{}", a) and (std::ostringstream{} << a) agree for arrays and views.
-    auto const s = elem_spec_.empty() ?
-       nda::to_string(a) :
-       nda::detail::print_to_string(a, nda::print_options{}, nda::detail::format_renderer{"{:" + std::string{elem_spec_} + "}"});
-    return std::copy(s.begin(), s.end(), ctx.out());
-  }
-};
-
-#endif // __cpp_lib_format

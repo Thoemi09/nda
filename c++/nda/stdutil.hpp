@@ -13,3 +13,4 @@
 #include "./stdutil/array.hpp"
 #include "./stdutil/complex.hpp"
 #include "./stdutil/concepts.hpp"
+#include "./stdutil/format.hpp"
